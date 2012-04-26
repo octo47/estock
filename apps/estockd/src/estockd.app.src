@@ -1,0 +1,13 @@
+{application, estockd,
+ [
+  {description, "EStock Sample App"},
+  {vsn, "0.1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib,
+		  gproc
+                 ]},
+  {mod, { estockd_app, []}},
+  {env, []}
+ ]}.
