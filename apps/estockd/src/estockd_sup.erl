@@ -27,8 +27,8 @@ start_worker(Args) ->
 %% Supervisor callbacks
 %% ===================================================================
 
+
 init([estockd_workers]) ->
-    ?DBG("Workers supervisor", []), 
     StartFunc = { ?WORKER_MODULE, start_link, [] },
     Restart = temporary,
     Shutdown = 2000, 
@@ -40,6 +40,9 @@ init([]) ->
     Restart = permanent,
     Shutdown = brutal_kill, 
     CoreSup ={ ?WORKER_SUP, StartFunc, Restart, Shutdown, supervisor, [?MODULE] },
-    ?DBG("Core supervisor", []),
-    {ok, { {one_for_one, 5, 10}, [CoreSup]} }.
+
+    ApiServer = { estockd_server, { estockd_server, start_link, [] }, 
+		  permanent, brutal_kill, worker, [estockd_server] },
+
+    {ok, { {one_for_one, 5, 10}, [ApiServer, CoreSup]} }.
 
