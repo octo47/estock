@@ -13,7 +13,7 @@
 -include("log.hrl").
 
 %% API
--export([start_link/1, start_worker/2]).
+-export([start_link/1, start_worker/2, find_or_create/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -21,26 +21,37 @@
 
 -define(SERVER, ?MODULE). 
 
--record(state, {name :: string()}).
+-record(state, {name :: string(), table :: term()}).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec start_worker(Name :: string(), Tab :: any()) -> any().
+start_link(Args) ->
+    gen_server:start_link(?MODULE, Args, []).
+
+-spec start_worker(Name :: string(), Tab :: term()) -> any().
 start_worker(Name, Tab) ->
     estockd_sup:start_worker([Name, Tab]).
 
-start_link(Args) ->
-    gen_server:start_link(?MODULE, Args, []).
+-spec find_or_create(Name :: string(), Tab :: term()) -> term().
+find_or_create(Name, Tab) ->
+    case gproc:lookup_local_name(Name) of
+	undefined ->
+	    start_worker(Name, Tab),
+	    gproc:lookup_local_name(Name);
+	Addr -> 
+	    Addr
+    end.
+
 
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
 
 init([Name, Tab]) ->
-    ?DBG("Worker for ~p~n", [Name]),
     true = gproc:add_local_name(Name),
-    {ok, #state{name = Name}}.
+    ?DBG("Worker for ~p~n", [Name]),
+    {ok, #state{name = Name, table = Tab}}.
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
