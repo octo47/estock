@@ -3,8 +3,10 @@
 compile: deps
 	./rebar compile
 
-rel: compile
-	dialyzer -r apps
+test: compile
+	./rebar skip_deps=true eunit
+
+rel: compile test
 	./rebar generate
 
 deps:
