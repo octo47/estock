@@ -7,4 +7,4 @@ ebin
 \#*#
 .#*
 erl_crash.dump
-
+rel/estockd
