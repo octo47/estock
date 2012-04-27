@@ -12,9 +12,10 @@
 
 -include("log.hrl").
 -include_lib("eunit/include/eunit.hrl").
--import(datetime_util, [datetime_to_millis/1, millis_to_datetime/1, now_to_millis/1]).
+-import(datetime_util, [datetime_to_millis/1, date_to_millis/1, 
+			millis_to_datetime/1, now_to_millis/1]).
 %% API
--export([start_link/1, start_worker/2, find_or_create/2, add_row/2]).
+-export([start_link/1, start_worker/2, find_or_create/2, add_row/2, init_table/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -27,7 +28,7 @@
 -define(MAX(A, B), if A > B -> A; true -> B end).
 -define(OPEN_PRICE(A, ATS, B, BTS), if ATS < BTS -> {A, ATS}; true -> {B, BTS} end).
 -define(CLOSE_PRICE(A, ATS, B, BTS), if ATS > BTS -> {A, ATS}; true -> {B, BTS} end).
-
+-define(ALL_SCALES, [year, month, week, day, hour, minute]).
 -record(state, {name :: string(), table :: term()}).
 
 %%%===================================================================
@@ -40,8 +41,19 @@ start_link(Args) ->
 start_worker(Name, Tab) ->
     estockd_sup:start_worker([Name, Tab]).
 
+init_table() ->
+    ?DBG("Initializing table", []),
+    case ets:info(?WORKER_TABLE) of
+	undefined -> ets:new(?WORKER_TABLE, [ordered_set, named_table, public]);
+	_ -> ok %%% somehow already created
+    end.
+
+
 add_row(Pid, Row) ->
     gen_server:cast(Pid, {add_row, Row}).
+
+list_aggs(Pid, Scale, Start, End, Limit) ->
+    gen_server:call(Pid, {list_aggs, Scale, Start, End, Limit}).
 
 -spec find_or_create(Name :: string(), Tab :: term()) -> term().
 find_or_create(Name, Tab) ->
@@ -65,6 +77,8 @@ init([Name, Tab]) ->
     ?DBG("Worker for ~p~n", [Name]),
     {ok, #state{name = Name, table = Tab}}.
 
+handle_call({list_rows, Scale, Start, End, Limit}, _From, State) ->
+    {reply, list_aggs_i(Scale, Start, End, Limit, State), State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -91,20 +105,52 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-add_row_i(Row, State) ->
-    {{Y, M, DD} = Date, {HH, MM, _}} = 
-	millis_to_datetime(Row#stock_row.timestamp),
-    D = calendar:date_to_gregorian_days(Y, M, DD),
-    W = calendar:iso_week_number(Date),
-    update_agg(year, {Y}, Row, State),
-    update_agg(month, {Y, M}, Row, State),
-    update_agg(week, {Y, W}, Row, State),
-    update_agg(day, {Y, D}, Row, State),
-    update_agg(hour, {Y, D, HH}, Row, State),
-    update_agg(minute, { Y, D, HH, MM}, Row, State).
+list_aggs_i(Scale, Start, End, Limit, State) ->
+    StartKey = make_key(Scale, State#state.name, Start),
+    EndKey = make_key(Scale, State#state.name, End),
+    lists:reverse(iter_first(StartKey, EndKey, Limit)).
 
-update_agg(Scale, ScaleValue, Row, State) ->
-    Key = {Row#stock_row.name, Scale, ScaleValue},
+iter_first(StartKey, EndKey, Limit) ->
+    Lookup = ets:lookup(?WORKER_TABLE, StartKey),
+    case Lookup of
+	undefined ->
+	    iter_aggs(StartKey, EndKey, Limit);
+	[{K, V}] ->
+	    [V] ++ iter_aggs(StartKey, EndKey, Limit-1)
+    end.
+
+iter_aggs(NextKey, EndKey, Limit) when Limit < 1 ->
+    [];
+iter_aggs(NextKey, EndKey, Limit) ->
+    case ets:next(?WORKER_TABLE, NextKey) of
+	'$end_of_table' -> [];
+	K when K > EndKey -> [];
+	K -> [{_, V}] = ets:lookup(?WORKER_TABLE, K),
+	     [V] ++ iter_aggs(K, EndKey, Limit-1)
+    end.
+
+add_row_i(Row, State) ->
+    Timestamp = Row#stock_row.timestamp,
+    Name = Row#stock_row.name,
+    [ update_agg(make_key(X, Name, Timestamp), Row, State) 
+      || X <- ?ALL_SCALES ],
+    ok.
+
+make_key(Scale, Name, Timestamp) ->
+    {{Y, M, DD} = Date, {HH, MM, _}} = 
+	millis_to_datetime(Timestamp),
+    D = calendar:date_to_gregorian_days(Y, M, DD),
+    {_, W} = calendar:iso_week_number(Date),
+    case Scale of
+	year -> {Name, Scale, {Y}};
+	month -> {Name, Scale, {Y, M}};
+	week -> {Name, Scale, {Y, W}};
+	day -> {Name, Scale, {Y, D}};
+	hour -> {Name, Scale, {Y, D, HH}};
+	minute -> {Name, Scale, {Y, D, HH, MM}}
+    end.
+
+update_agg(Key, Row, State) ->
     NewAgg = case ets:lookup(State#state.table, Key) of
 		 [{Key, Agg}] ->
 		     update_agg(Agg, Row);
@@ -147,6 +193,41 @@ update_agg(Agg, Row) ->
 %% ===================================================================
 
 -ifdef(EUNIT).
+
+iter_test() ->
+    init_table(),
+    State = {state, "YNDX", ?WORKER_TABLE},
+    Start = datetime_to_millis({{2011,2,15},{22,14,44}}),
+    add_row_i(#stock_row { timestamp = Start,
+			   name = "YNDX",
+			   price = 25,
+			   amount = 1230 }, State),
+    add_row_i(#stock_row { timestamp = Start + 60000,
+			   name = "YNDX",
+			   price = 24,
+			   amount = 10 }, State),
+    End = Start + 121000,
+    add_row_i(#stock_row { timestamp = End,
+			   name = "YNDX",
+			   price = 26,
+			   amount = 210 }, State),
+    [
+     begin
+	 io:format("=================== ~p~n", [S]),
+	 [ io:format("~p~n", [X]) 
+	   || X <- list_aggs_i(S, Start, End+1, 3, State)
+	 ] 
+     end
+      || S <- ?ALL_SCALES ].
+
+make_key_test() ->
+    Timestamp = datetime_to_millis({{2011,2,15},{22,14,44}}),
+    Keys = [ begin Key = {Name, InKeyScale, Time} = make_key(Scale, "ABC", Timestamp),
+		   ?assert(Name =:= "ABC"),
+		   ?assert(Scale =:= InKeyScale),
+		   Key
+	     end || Scale <- ?ALL_SCALES ],
+    io:format("Keys ~p~n", [Keys]).
 
 make_agg_test() ->
     Row = #stock_row { timestamp = datetime_to_millis({{2011,2,15},{22,14,44}}),
