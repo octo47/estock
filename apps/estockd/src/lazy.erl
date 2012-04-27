@@ -1,6 +1,5 @@
--module(util_lazy).
-
--export([seq/2, map_seq/2, map_seq/3]).
+-module(lazy).
+-compile(export_all).
 
 seq(M, N) when M =< N ->
     fun() -> [ M, seq(M+1, N) ] end;
