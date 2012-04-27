@@ -29,6 +29,7 @@ start_worker(Args) ->
 
 
 init([estockd_workers]) ->
+    estockd_worker:init_table(),
     StartFunc = { ?WORKER_MODULE, start_link, [] },
     Restart = temporary,
     Shutdown = 2000, 

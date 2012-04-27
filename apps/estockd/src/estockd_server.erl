@@ -41,11 +41,6 @@ start_link() ->
 %%%===================================================================
 
 init([]) ->
-    ?DBG("Initializing table", []),
-    case ets:info(?WORKER_TABLE) of
-	undefined -> ets:new(?WORKER_TABLE, [ordered_set, named_table, public]);
-	_ -> ok %%% somehow already created
-    end,
     {ok, #state{}}.
 
 handle_call(_Request, _From, State) ->
