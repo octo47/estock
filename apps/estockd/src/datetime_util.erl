@@ -28,6 +28,9 @@ datetime_to_seconds({Date, Time}) ->
 datetime_to_millis({Date, Time}) ->
     datetime_to_seconds({Date, Time}) * 1000.
 
+date_to_millis({Date, Time}) ->
+    datetime_to_seconds({Date, {0,0,0}}) * 1000.
+
 epoch_gregorian_seconds() ->
     calendar:datetime_to_gregorian_seconds({{1970,1,1}, {0,0,0}}).       
         
