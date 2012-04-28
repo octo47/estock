@@ -1,25 +1,26 @@
-.PHONY: deps rel
+REBAR = $(shell which rebar || echo ./rebar)
+ERLC=erlc -I include
+ERL=erl -I include -noshell -pa ebin
 
-compile: deps
-	./rebar compile
+.PHONY: ebin
+.NOTPARALLEL: compile
 
-test: compile
-	./rebar skip_deps=true eunit
+# Makefile targets format:
+#
+# 	target: dependencies
+# 	[tab] system command
+#
+compile: ebin
 
-rel: test
-	./rebar generate
-
-deps:
-	./rebar get-deps
+rel:	test
+	@ $(REBAR) generate
 
 clean:
-	./rebar clean
+	@ $(REBAR) clean
 
-devrel: dev1 dev2
+test: compile
+	@ time $(REBAR) skip_deps=true eunit
 
-dev1 dev2:
-	mkdir -p dev
-	(cd rel && ../rebar generate target_dir=../dev/$@ overlay_vars=vars/$@_vars.config)
+ebin:
+	@ $(REBAR) compile
 
-devclean:
-	rm -rf dev

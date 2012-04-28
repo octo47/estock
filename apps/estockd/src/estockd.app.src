@@ -6,9 +6,9 @@
   {applications, [
                   kernel,
                   stdlib,
-		  gproc,
-		  util
+		  gproc
                  ]},
+  {modules, [ estockd ]},
   {mod, { estockd_app, []}},
   {env, []}
  ]}.

@@ -53,3 +53,11 @@ perlin_noise_i(_, I, _) when I > 6 -> 0;
 perlin_noise_i(F, I, P) ->
     interpolated_noise(F * 2 * I) * P * I + perlin_noise_i(F, I + 1, P).
 
+dump_to_file(FileName, Amount) ->
+    dump_to_file(FileName, Amount, 1).
+dump_to_file(FileName, Amount, Scale) ->
+    {ok, F}=file:open(FileName, [read,write]),
+    file:write(F, [ float_to_list(X/Scale) ++ " " 
+		    ++ float_to_list(gen_rnd:perlin_noise(X/Scale)) ++ "\n"
+		    || X <- lists:seq(1, Amount) ]),
+    file:close(F).
