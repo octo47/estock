@@ -13,7 +13,8 @@
 -include("log.hrl").
 -include_lib("eunit/include/eunit.hrl").
 -import(datetime_util, [datetime_to_millis/1, date_to_millis/1, 
-			millis_to_datetime/1, now_to_millis/1]).
+			millis_to_datetime/1, now_to_millis/1, 
+			truncate_datetime_millis/2]).
 %% API
 -export([start_link/1, start_worker/2, find_or_create/2, add_row/2, init_table/0]).
 
@@ -137,18 +138,8 @@ add_row_i(Row, State) ->
     ok.
 
 make_key(Scale, Name, Timestamp) ->
-    {{Y, M, DD} = Date, {HH, MM, _}} = 
-	millis_to_datetime(Timestamp),
-    D = calendar:date_to_gregorian_days(Y, M, DD),
-    {_, W} = calendar:iso_week_number(Date),
-    case Scale of
-	year -> {Name, Scale, {Y}};
-	month -> {Name, Scale, {Y, M}};
-	week -> {Name, Scale, {Y, W}};
-	day -> {Name, Scale, {Y, D}};
-	hour -> {Name, Scale, {Y, D, HH}};
-	minute -> {Name, Scale, {Y, D, HH, MM}}
-    end.
+    Truncated = truncate_datetime_millis(Scale, millis_to_datetime(Timestamp)),
+    {Name, Scale, Truncated}.
 
 update_agg(Key, Row, State) ->
     NewAgg = case ets:lookup(State#state.table, Key) of
@@ -225,6 +216,7 @@ make_key_test() ->
     Keys = [ begin Key = {Name, InKeyScale, Time} = make_key(Scale, "ABC", Timestamp),
 		   ?assert(Name =:= "ABC"),
 		   ?assert(Scale =:= InKeyScale),
+		   ?assert(is_integer(Timestamp)),
 		   Key
 	     end || Scale <- ?ALL_SCALES ],
     io:format("Keys ~p~n", [Keys]).
