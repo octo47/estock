@@ -2,7 +2,11 @@
 %%% @author Andrey Stepachev <octo@octo-laptop>
 %%% @copyright (C) 2012, Andrey Stepachev
 %%% @doc
-%%% Handles requests for particual names
+%%% Handles requests for particual names.
+%%% Data stored in est table (ordered) with key
+%%% { Name, Scale, StartDateOfScale }.
+%%% So, we can read aggregated rows iterating keys, 
+%%% starting from first date, passed. 
 %%% @end
 %%% Created : 26 Apr 2012 by Andrey Stepachev <octo@octo-laptop>
 %%%-------------------------------------------------------------------
@@ -48,7 +52,6 @@ init_table() ->
 	undefined -> ets:new(?WORKER_TABLE, [ordered_set, named_table, public]);
 	_ -> ok %%% somehow already created
     end.
-
 
 add_row(Pid, Row) ->
     gen_server:cast(Pid, {add_row, Row}).
@@ -185,6 +188,7 @@ update_agg(Agg, Row) ->
 
 -ifdef(EUNIT).
 
+%% TODO: write real test here
 iter_test() ->
     init_table(),
     State = {state, "MSFT", ?WORKER_TABLE},
@@ -204,7 +208,6 @@ iter_test() ->
     [ { StartDate, _, _ } | _ ] = Changes,
     Start = datetime_to_millis(StartDate),
     [ add_row_i(R, State) || R <- Rows ],
-    %% TODO: write real test here
     [
      begin
 	 io:format("=================== ~p~n", [S]),
