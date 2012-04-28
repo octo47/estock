@@ -108,26 +108,26 @@ code_change(_OldVsn, State, _Extra) ->
 
 list_aggs_i(Scale, Start, End, Limit, State) ->
     StartKey = make_key(Scale, State#state.name, Start),
-    EndKey = make_key(Scale, State#state.name, End),
-    lists:reverse(iter_first(StartKey, EndKey, Limit)).
+    EndKey =  make_key(Scale, State#state.name, End),
+    iter_first(StartKey, EndKey, Limit).
 
 iter_first(StartKey, EndKey, Limit) ->
     Lookup = ets:lookup(?WORKER_TABLE, StartKey),
     case Lookup of
 	undefined ->
 	    iter_aggs(StartKey, EndKey, Limit);
-	[{K, V}] ->
-	    [V] ++ iter_aggs(StartKey, EndKey, Limit-1)
+	[{{_, _, Ts} = K, V}] ->
+	    [{Ts, V}] ++ iter_aggs(StartKey, EndKey, Limit-1)
     end.
 
-iter_aggs(NextKey, EndKey, Limit) when Limit < 1 ->
+iter_aggs(NextKey, EndKey, Limit) 
+  when ((Limit < 1) or (NextKey > EndKey)) ->
     [];
 iter_aggs(NextKey, EndKey, Limit) ->
     case ets:next(?WORKER_TABLE, NextKey) of
 	'$end_of_table' -> [];
-	K when K > EndKey -> [];
-	K -> [{_, V}] = ets:lookup(?WORKER_TABLE, K),
-	     [V] ++ iter_aggs(K, EndKey, Limit-1)
+	{_, _, Ts} = K -> [{_, V}] = ets:lookup(?WORKER_TABLE, K),
+	     [{Ts, V}] ++ iter_aggs(K, EndKey, Limit-1)
     end.
 
 add_row_i(Row, State) ->
@@ -187,26 +187,29 @@ update_agg(Agg, Row) ->
 
 iter_test() ->
     init_table(),
-    State = {state, "YNDX", ?WORKER_TABLE},
-    Start = datetime_to_millis({{2011,2,15},{22,14,44}}),
-    add_row_i(#stock_row { timestamp = Start,
-			   name = "YNDX",
-			   price = 25,
-			   amount = 1230 }, State),
-    add_row_i(#stock_row { timestamp = Start + 60000,
-			   name = "YNDX",
-			   price = 24,
-			   amount = 10 }, State),
-    End = Start + 121000,
-    add_row_i(#stock_row { timestamp = End,
-			   name = "YNDX",
-			   price = 26,
-			   amount = 210 }, State),
+    State = {state, "MSFT", ?WORKER_TABLE},
+    Changes = [
+	       {{{2011,2,15},{22,14,44}}, 25, 100}, 
+	       {{{2011,2,15},{22,15,44}}, 26, 200},
+	       {{{2011,2,15},{22,16,44}}, 24, 100},
+	       {{{2011,2,16},{22,14,44}}, 30, 200},
+	       {{{2011,3,15},{22,14,44}}, 30, 100}
+	      ],
+    Rows = [ #stock_row { timestamp = datetime_to_millis(Date),
+			   name = "MSFT",
+			   price = Price,
+			   amount = Amount } 
+	     || { Date, Price, Amount } <- Changes
+	   ],
+    [ { StartDate, _, _ } | _ ] = Changes,
+    Start = datetime_to_millis(StartDate),
+    [ add_row_i(R, State) || R <- Rows ],
+    %% TODO: write real test here
     [
      begin
 	 io:format("=================== ~p~n", [S]),
 	 [ io:format("~p~n", [X]) 
-	   || X <- list_aggs_i(S, Start, End+1, 3, State)
+	   || X <- list_aggs_i(S, Start, Start + 10000000, 10, State)
 	 ] 
      end
       || S <- ?ALL_SCALES ].
@@ -223,7 +226,7 @@ make_key_test() ->
 
 make_agg_test() ->
     Row = #stock_row { timestamp = datetime_to_millis({{2011,2,15},{22,14,44}}),
-		       name = "YNDX",
+		       name = "MSFT",
 		       price = 25,
 		       amount = 1230 },
     Agg = make_agg(Row),
@@ -232,7 +235,7 @@ make_agg_test() ->
     ?assert(Agg#stock_agg.max_price =:= 25),
 
     Row2 = #stock_row { timestamp = datetime_to_millis({{2011,2,15},{22,15,01}}),
-    		       name = "YNDX",
+    		       name = "MSFT",
     		       price = 26,
     		       amount = 123 },
     Agg2 = update_agg(Agg, Row2),
