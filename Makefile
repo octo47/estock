@@ -6,7 +6,7 @@ compile: deps
 test: compile
 	./rebar skip_deps=true eunit
 
-rel: compile test
+rel: test
 	./rebar generate
 
 deps:
