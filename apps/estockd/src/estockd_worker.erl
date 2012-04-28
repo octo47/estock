@@ -3,7 +3,7 @@
 %%% @copyright (C) 2012, Andrey Stepachev
 %%% @doc
 %%% Handles requests for particual names.
-%%% Data stored in est table (ordered) with key
+%%% Data stored in ets table (ordered) with key
 %%% { Name, Scale, StartDateOfScale }.
 %%% So, we can read aggregated rows iterating keys, 
 %%% starting from first date, passed. 
