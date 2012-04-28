@@ -28,7 +28,7 @@ datetime_to_seconds({Date, Time}) ->
 datetime_to_millis({Date, Time}) ->
     datetime_to_seconds({Date, Time}) * 1000.
 
-date_to_millis({Date, Time}) ->
+date_to_millis({Date, _}) ->
     datetime_to_seconds({Date, {0,0,0}}) * 1000.
 
 epoch_gregorian_seconds() ->
@@ -53,54 +53,3 @@ date_to_epoch(Date) ->
 datetime_to_epoch({Date, Time}) ->
     gregorian_seconds_to_epoch(
         datetime_to_seconds({Date, Time})).
-
-is_older_by(T1, T2, {days, N}) ->
-    N1 = day_difference(T1, T2)
-    , case N1 of
-        N2 when (-N < N2) ->
-            true;
-        _ ->
-            false
-    end.
-
-is_sooner_by(T1, T2, {days, N}) ->
-    case day_difference(T1, T2) of
-        N1 when N > N1 ->
-            true;
-        _ ->
-            false
-    end.
-
-is_time_older_than({Date, Time}, Mark) ->
-    is_time_older_than(calendar:datetime_to_gregorian_seconds({Date, Time}), Mark);
-is_time_older_than(Time, {DateMark, TimeMark}) ->
-    is_time_older_than(Time
-        , calendar:datetime_to_gregorian_seconds({DateMark, TimeMark}));
-is_time_older_than(Time, Mark)  when is_integer(Time), is_integer(Mark) ->
-    Time < Mark.
-
-day_difference({D1, _}, D2) ->
-    day_difference(D1, D2);
-day_difference(D1, {D2, _}) ->
-    day_difference(D1, D2);
-day_difference(D1, D2) ->
-    Days1 = calendar:date_to_gregorian_days(D1)
-    , Days2 = calendar:date_to_gregorian_days(D2)
-    , Days1 - Days2.
-
-is_time_sooner_than({Date, Time}, Mark) ->
-    is_time_sooner_than(calendar:datetime_to_gregorian_seconds({Date, Time})
-        , Mark);
-is_time_sooner_than(Time, {DateMark, TimeMark}) ->
-    is_time_sooner_than(Time
-        , calendar:datetime_to_gregorian_seconds({DateMark, TimeMark}));
-is_time_sooner_than(Time, Mark)  when is_integer(Time), is_integer(Mark) ->
-    Time > Mark.
-
-subtract(Date, {days, N}) ->
-    New = calendar:date_to_gregorian_days(Date) - N
-    , calendar:gregorian_days_to_date(New).
-
-add(Date, {days, N}) ->
-    New = calendar:date_to_gregorian_days(Date) + N
-    , calendar:gregorian_days_to_date(New).
