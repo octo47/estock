@@ -6,31 +6,28 @@
 %%% Created : 28 Apr 2012 by Andrey Stepachev <octo47@gmail.com>
 
 -module(gen_rnd).
--export([noise/2, noise_list/2]).
+-export([random_walk/2, random_walk/3]).
 
 -include_lib("eunit/include/eunit.hrl").
 
+%% ===================================================================
+%% Public API
+%% ===================================================================
+
+-spec random_walk(float(), float()) -> float().
+random_walk(Price, Volatility) ->
+    Price + random_walk_i(6, Volatility).
+-spec random_walk(float(), integer(), float()) -> float().
 random_walk(Price, Steps, Volatility) ->
-    Price + random_walk(Steps, Volatility).
-random_walk(Step, _) when Step =:= 0 -> 0;
-random_walk(Step, Volatility)->
-    (random:uniform() - 0.485) * 2 * Volatility + random_walk(Step-1, Volatility).
+    Price + random_walk_i(Steps, Volatility).
 
-noise(T, Seed) ->
-    noise_sin_i(T, 1, Seed).
+%% ===================================================================
+%% Internal functions
+%% ===================================================================
 
-noise_sin_i(_, _, []) ->
-    0.5;
-noise_sin_i(T, Idx, [Phi | Rest]) ->
-    math:sin( T * Idx + Phi ) + noise_sin_i(T, Idx + 1, Rest).
-
-smooth_noise(X, Seed) ->
-    noise(X, Seed)/2  +  noise(X-1, Seed)/4  +  noise(X + 1, Seed)/4.
-
--spec noise_list(integer(), integer()) -> [float()].
-noise_list(N, Harmonics) ->
-    Seed = [ random:uniform() * N * 3.14 || _ <- lists:seq(1, Harmonics) ],
-    [ {X, smooth_noise(X / N * Harmonics * 3.14, Seed)} || X <- lists:seq(1, N) ].
+random_walk_i(Step, _) when Step =:= 0 -> 0;
+random_walk_i(Step, Volatility)->
+    (random:uniform() - 0.485) * 2 * Volatility + random_walk_i(Step-1, Volatility).
 
 %% ===================================================================
 %% Unit Tests
@@ -40,7 +37,7 @@ noise_list(N, Harmonics) ->
 
 price_list(_, N, _) when N =:= 0 -> [];
 price_list(Price, N, Volatility) ->
-    NewPrice = random_walk(Price, 6, Volatility),
+    NewPrice = random_walk(Price, Volatility),
     [NewPrice] ++ price_list(NewPrice, N-1, Volatility).
 
 price_list_indexed(Price, N, Volatility) ->
