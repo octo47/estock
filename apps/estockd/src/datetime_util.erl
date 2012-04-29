@@ -25,7 +25,7 @@ now_to_datetime(Now) ->
     calendar:now_to_universal_time(Now).
 
 now_to_date(Now) ->
-    {Date, Time} = calendar:now_to_universal_time(Now),
+    {Date, _} = calendar:now_to_universal_time(Now),
     Date.
 
 epoch_gregorian_seconds() ->
@@ -74,21 +74,21 @@ week_to_date(Year, Weeknum) ->
     W01 = gregorian_days_of_w01_1(Year),
     calendar:gregorian_days_to_date(W01 + (Weeknum - 1) * 7).
 
-truncate_now_millis(Scope, {Mega, Sec, Micro} = Now) ->
+truncate_now_millis(Scope, Now) ->
     truncate_datetime_millis(Scope, now_to_datetime(Now)).
 
 truncate_datetime_millis(year,  {{Year, _, _}, {_, _, _}}) ->
     datetime_to_millis({{Year, 1, 1}, {0, 0, 0}});
 truncate_datetime_millis(month, {{Year, Month, _}, {_, _, _}}) ->
     datetime_to_millis({{Year, Month, 1}, {0, 0, 0}});
-truncate_datetime_millis(week, {{Year, Month, Day} = Date, {_, _, _}}) ->
+truncate_datetime_millis(week, {{Year, _, _} = Date, {_, _, _}}) ->
     {Year, WeekNum} = calendar:iso_week_number(Date),
     datetime_to_millis({week_to_date(Year, WeekNum), {0, 0, 0}});
-truncate_datetime_millis(day, {{Year, Month, Day} = Date, {_, _, _}}) ->
+truncate_datetime_millis(day, { Date, {_, _, _}}) ->
     datetime_to_millis({Date, {0, 0, 0}});
-truncate_datetime_millis(hour, {{Year, Month, Day} = Date, {HH, _, _}}) ->
+truncate_datetime_millis(hour, { Date, {HH, _, _}}) ->
     datetime_to_millis({Date, {HH, 0, 0}});
-truncate_datetime_millis(minute, {{Year, Month, Day} = Date, {HH, MM, _}}) ->
+truncate_datetime_millis(minute, { Date, {HH, MM, _}}) ->
     datetime_to_millis({Date, {HH, MM, 0}}).
 
 %% ===================================================================
@@ -103,7 +103,6 @@ millis_test() ->
     ?assert({{1960, 4, 28},{8, 18, 14}} =:= millis_to_datetime(-305394106000)),
 
     Date = {{2011, 03, 01}, {23, 44, 22}},
-    DateMillis = datetime_to_millis(Date),
     Reconv = now_to_datetime(millis_to_now(datetime_to_millis(Date))),
     ?assert( Reconv =:= Date).
 
