@@ -44,6 +44,8 @@ init([]) ->
 
     ApiServer = { estockd_server, { estockd_server, start_link, [] }, 
 		  permanent, brutal_kill, worker, [estockd_server] },
+    GeneratorServer = { estockd_generator, { estockd_generator, start_link, [] }, 
+		  permanent, brutal_kill, worker, [estockd_generator] },
 
-    {ok, { {one_for_one, 5, 10}, [ApiServer, CoreSup]} }.
+    {ok, { {one_for_one, 5, 10}, [ApiServer, CoreSup, GeneratorServer]} }.
 
