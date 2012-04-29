@@ -12,7 +12,7 @@ now_to_seconds({Mega, Sec, _}) ->
     (Mega * 1000000) + Sec.   
     
 now_to_millis({Mega, Sec, Micro}) ->
-    (Mega * 1000000) + (Sec * 1000) + trunc(Micro/1000).
+    (Mega * 1000000000) + (Sec * 1000) + trunc(Micro/1000).
     
 millis_to_now(Millis) ->
     Seconds = trunc(Millis/1000),
@@ -101,10 +101,14 @@ millis_test() ->
     ?assert({{2012, 4, 28},{8, 18, 14}} =:= millis_to_datetime(1335601094057)),
     ?assert(1335601094000 =:= datetime_to_millis({{2012, 4, 28},{8, 18, 14}})),
     ?assert({{1960, 4, 28},{8, 18, 14}} =:= millis_to_datetime(-305394106000)),
-
+	
     Date = {{2011, 03, 01}, {23, 44, 22}},
     Reconv = now_to_datetime(millis_to_now(datetime_to_millis(Date))),
-    ?assert( Reconv =:= Date).
+    ?assert( Reconv =:= Date),
+	
+    ReconvMillis = now_to_millis(millis_to_now(datetime_to_millis(Date))),
+    ?assert( ReconvMillis =:= datetime_to_millis(Date)).
+
 
 truncate_test() ->
     Date = {{2011, 03, 01}, {23, 44, 22}},
