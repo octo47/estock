@@ -13,7 +13,7 @@ ERL=erl -I include -noshell -pa ebin
 compile: ebin
 
 rel:	test
-	@ $(REBAR) generate
+	@ $(REBAR) generate force=1
 
 clean:
 	@ $(REBAR) clean
