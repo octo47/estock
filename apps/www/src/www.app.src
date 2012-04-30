@@ -1,0 +1,12 @@
+{application, www,
+ [
+  {description, "Estock www app"},
+  {vsn, "0.1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { www_app, []}},
+  {env, []}
+ ]}.
