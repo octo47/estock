@@ -20,7 +20,7 @@
 						millis_to_datetime/1,
 						truncate_datetime_millis/2]).
 %% API
--export([start_link/1, start_worker/2, find_or_create/1, find/1, add_row/2, list_aggs/5, init_table/0]).
+-export([start_link/1, start_worker/2, find_or_create/1, find/1, add_row/2, list_aggs/4, init_table/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -56,8 +56,8 @@ init_table() ->
 add_row(Pid, Row) ->
     gen_server:cast(Pid, {add_row, Row}).
 
-list_aggs(Pid, Scale, Start, End, Limit) ->
-    gen_server:call(Pid, {list_aggs, Scale, Start, End, Limit}).
+list_aggs(Pid, Scale, Start, Limit) ->
+    gen_server:call(Pid, {list_aggs, Scale, Start, Limit}).
 
 -spec find(Name :: string()) -> term().
 find(Name) ->
@@ -85,8 +85,8 @@ init([Name, Tab]) ->
     ?DBG("Worker for ~p~n", [Name]),
     {ok, #state{name = Name, table = Tab}}.
 
-handle_call({list_aggs, Scale, Start, End, Limit}, _From, State) ->
-    {reply, list_aggs_i(Scale, Start, End, Limit, State), State};
+handle_call({list_aggs, Scale, Start, Limit}, _From, State) ->
+    {reply, list_aggs_i(Scale, Start, Limit, State), State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -113,26 +113,25 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-list_aggs_i(Scale, Start, End, Limit, State) ->
+list_aggs_i(Scale, Start, Limit, State) ->
     StartKey = make_key(Scale, State#state.name, Start),
-    EndKey =  make_key(Scale, State#state.name, End),
-    iter_table_start(StartKey, EndKey, Limit).
+    iter_table_start(StartKey, Limit).
 
-iter_table_start(StartKey, EndKey, Limit) ->
+iter_table_start(StartKey, Limit) ->
     Lookup = ets:lookup(?WORKER_TABLE, StartKey),
     case Lookup of
-		[{K, _}] -> lookup(K) ++ iter_table(K, EndKey, Limit-1);
-		[] -> iter_table(StartKey, EndKey, Limit)
+		[{K, _}] -> lookup(K) ++ iter_table(K, Limit-1);
+		[] -> iter_table(StartKey, Limit)
     end.
 
-iter_table(_, _, Limit) 
+iter_table(_, Limit) 
   when Limit < 1 ->
     [];
-iter_table(NextKey, EndKey, Limit) ->
+iter_table({_, CurrentScale, _} = NextKey, Limit) ->
     case ets:next(?WORKER_TABLE, NextKey) of
 		'$end_of_table' -> [];
-		K when K >= EndKey -> [];
-	    K -> lookup(K) ++ iter_table(K, EndKey, Limit-1)
+		{_, Scale, _} when Scale =/= CurrentScale -> [];
+	    K -> lookup(K) ++ iter_table(K, Limit-1)
     end.
 
 lookup(K) ->
@@ -219,7 +218,7 @@ iter_test() ->
 		 Start = datetime_to_millis(StartDate) - 1,
 		 io:format("=================== ~p~n", [S]),
 		 [ io:format("~p~n", [X]) 
-		   || X <- list_aggs_i(S, Start, Start * 2, 1000, State)
+		   || X <- list_aggs_i(S, Start, 1000, State)
 		 ] 
      end
 	 || S <- ?ALL_SCALES ].
