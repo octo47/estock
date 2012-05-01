@@ -8,5 +8,8 @@
                   stdlib
                  ]},
   {mod, { www_app, []}},
-  {env, []}
+  {env, [
+		 {docroot, "./docroot"},
+		 {logdir, "./logs"}
+		]}
  ]}.
