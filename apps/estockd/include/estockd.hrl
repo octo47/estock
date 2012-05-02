@@ -15,11 +15,11 @@
 		  amount :: integer() }).
 
 -record(stock_agg, {
-	          open_price :: price(),
-	          open_price_ts :: timestamp(),
-	          close_price :: price(),
-	          close_price_ts :: timestamp(),
+		  open_price :: price(),
+		  open_price_ts :: timestamp(),
+		  close_price :: price(),
+		  close_price_ts :: timestamp(),
 		  min_price :: price(),
 		  max_price :: price(),
 		  amount :: integer()
-		  }).
+		 }).
