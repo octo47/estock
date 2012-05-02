@@ -92,20 +92,23 @@ draw_row(header)->
 	  {th, [], "Open"},
 	  {th, [], "Close"},
 	  {th, [], "Min"},
-	  {th, [], "Max"}]};
+	  {th, [], "Max"},
+	  {th, [], "Amount"}]};
 draw_row({{_, Scale, Timestamp}, 
 		  #stock_agg {
 			open_price = OP,
 			close_price = CP,
 			min_price = MinP,
-			max_price = MaxP
+			max_price = MaxP,
+			amount = Amount
 		   }}) ->
 	{tr, [], [
 			  {td, [], format_ts(Scale, Timestamp)},
 			  {td, [], format_number(OP)},
 			  {td, [], format_number(CP)},
 			  {td, [], format_number(MinP)},
-			  {td, [], format_number(MaxP)}
+			  {td, [], format_number(MaxP)},
+			  {td, [], integer_to_list(Amount)}
 			 ]}.
 
 format_ts(Scale, TimeStamp) ->
