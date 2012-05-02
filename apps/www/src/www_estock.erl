@@ -12,7 +12,7 @@
 -export([out/1]).
 
 -record(post_data, {
-		  name = "YNDX",
+		  name = "ECHO",
 		  start = 0,
 		  scale = day,
 		  limit = 50}).
