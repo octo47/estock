@@ -13,7 +13,7 @@
 
 -record(post_data, {
 		  name = "YNDX",
-		  start = datetime_util:epoch_millis(),
+		  start = 0,
 		  scale = day,
 		  limit = 50}).
 
@@ -122,7 +122,7 @@ format_number(Number) ->
 	if is_float(Number) ->
 			io_lib:format("~.4f", [Number]);
 	   is_integer(Number) ->
-			Number
+			io_lib:format("~.4f", [float(Number)])
 	end.
 
 ehtml(Inner) ->
