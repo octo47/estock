@@ -8,6 +8,17 @@
 -type timestamp() :: integer().
 -type price() :: number().
 
+-record(timeunit, {
+		  time :: timestamp(),
+		  count :: integer()}).
+
+-record(recent_counter, {
+		  timeunits = [] :: [#timeunit{}],
+		  length = 0 :: integer(),
+		  maxlength = 30 :: integer(),
+		  timetick = 1000 :: integer,
+		  updated = 0:: timestamp()}).
+
 -record(stock_row, {
 		  timestamp :: timestamp(),
 		  name :: tool_name(),

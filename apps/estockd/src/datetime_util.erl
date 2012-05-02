@@ -1,5 +1,7 @@
 -module(datetime_util).
 -compile(export_all).
+-include("estockd.hrl").
+-include("log.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 epoch() ->
@@ -91,6 +93,58 @@ truncate_datetime_millis(hour, { Date, {HH, _, _}}) ->
 truncate_datetime_millis(minute, { Date, {HH, MM, _}}) ->
     datetime_to_millis({Date, {HH, MM, 0}}).
 
+%% Timeunits
+update_timeunits(Now, Inc, #recent_counter {
+						length = Length,
+						timeunits = TimeUnits} = Recent) ->
+	if 
+		Length == 0 -> 
+			Recent#recent_counter { 
+			  length = 1, 
+			  timeunits = [ #timeunit { time = Now, count = Inc }],
+			  updated = Now };
+		true ->
+			[H | Rest] = TimeUnits,
+			if 
+				Now - H#timeunit.time >= Recent#recent_counter.timetick ->
+					%% in case of timeunit to big, add another one
+					NewTimeUnit = #timeunit { count = Inc, time = Now },
+					{ HeadLength, TimeUnitsHead } = 
+						if 
+							%% possibly remove one from tail
+							Length >= Recent#recent_counter.maxlength -> 
+								{ Length - 1, lists:sublist(TimeUnits, 1, Length - 1)};
+							true -> 
+						{ Length, TimeUnits }
+						end,
+					Recent#recent_counter { timeunits = [NewTimeUnit] ++ TimeUnitsHead,
+											length = HeadLength + 1,
+											updated = Now};
+				true -> 
+					NewCounter = H#timeunit.count + Inc,
+					UpdatedTimeunit = H#timeunit { count = NewCounter },
+					Recent#recent_counter { timeunits = [UpdatedTimeunit] ++ Rest, updated = Now}
+			end
+	end.
+
+aggregate_recent(Recent) ->
+	List = Recent#recent_counter.timeunits,
+	Acc0 = { Recent#recent_counter.updated, 0.0, 0 },
+	{_, Avg, Count} = 
+		lists:foldl(fun(A, AccIn) ->
+							#timeunit {time = CurrentTs, count = CurrentCnt} = A,
+							{LastTs, Avg, Count} = AccIn,
+							
+							MillisPassed = LastTs - CurrentTs,
+							NAvg = CurrentCnt / (if MillisPassed == 0 -> 1;
+													true -> MillisPassed end),
+							{ CurrentTs, (NAvg + Avg) / 2, CurrentCnt + Count }
+					end,
+					Acc0,
+					List),
+	{Recent#recent_counter.updated, Avg, Count}.
+						
+
 %% ===================================================================
 %% Unit Tests
 %% ===================================================================
@@ -124,6 +178,16 @@ truncate_test() ->
     ?assert( T5 =:= {{2011, 3, 1}, {23, 0, 0}}),
     T6 = millis_to_datetime(truncate_datetime_millis(minute, Date)),
     ?assert( T6 =:= {{2011, 3, 1}, {23, 44, 0}}).
+
+timeunits_test() ->
+	RC = #recent_counter { maxlength = 40, timetick = 1000 },
+	Now = epoch_millis(),
+	RCs = lists:foldl(fun(X, CurrRC) 
+						 -> update_timeunits(Now + X * 10, 100, CurrRC)
+					  end, RC, lists:seq(1, 4000)),
+	{_, Avg, Count} = aggregate_recent(RCs),
+	?assert( round(Avg) - 10.0 < 1.0),
+	?assert( Count =:= 4000*100 ).
 
 -endif.
 
