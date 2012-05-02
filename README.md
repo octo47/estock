@@ -1,0 +1,4 @@
+estock
+======
+
+Toy Erlang project
