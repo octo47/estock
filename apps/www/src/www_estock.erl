@@ -7,12 +7,14 @@
 
 -module(www_estock).
 -include("../../../deps/yaws/include/yaws_api.hrl").
+-include("../../estockd/include/estockd.hrl").
 
 -export([out/1]).
 
 -record(post_data, {
 		  name = "YNDX",
 		  start = datetime_util:epoch_millis(),
+		  scale = day,
 		  limit = 50}).
 
 out(A) ->
@@ -25,11 +27,10 @@ out(A) ->
 	   Req#http_request.method == 'POST' ->
 			L = yaws_api:parse_post(A),
 			P = parse_post_data(L, #post_data{}),
-			io_lib:format("post_data: ~p~n", [P]),
 			ehtml([
 				   draw_hello(),
 				   draw_form(P),
-				   draw_table()
+				   draw_table(P)
 				  ])
 	end.
 
@@ -37,6 +38,7 @@ parse_post_data(L, P) ->
 	[I|R] = L,
 	Np = case I of 
 			 {"name", V} -> P#post_data{ name = V };
+			 {"scale", V} -> P#post_data{ scale = V};
 			 {"start", V} ->
 				 {D, _} = string:to_integer(V), 
 				 P#post_data{ start = D };
@@ -60,12 +62,68 @@ draw_form(PostData) ->
 	  {input, [{name, name}, {type, text}, {value, PostData#post_data.name}]},
 	  {p, [], "Start Date"},
 	  {input, [{name, start}, {type, text}, {value, PostData#post_data.start}]},
+	  {p, [], "Scale"},
+	  {input, [{name, scale}, {type, text}, {value, PostData#post_data.scale}]},
 	  {p, [], "Limit"},
 	  {input, [{name, limit}, {type, text}, {value, "50"}]},
 	  {input, [{type, submit}]}]}.
 
-draw_table() ->
-	{p, [], "Table will be here soon..."}.
+draw_table(PostData) ->
+	Rows = [ draw_row(Agg)
+			  || Agg <- estockd:list_aggs(
+						  PostData#post_data.name,
+						  binary_to_existing_atom(
+							list_to_binary(PostData#post_data.scale),
+							latin1),
+						  PostData#post_data.start,
+						  PostData#post_data.limit)],
+	case Rows of
+		[] -> {p, [], "No data found."};
+		_ -> {table, [{border, "1"}], 
+			  [draw_row(header),
+			   Rows
+			  ]
+			 }
+	end.
+
+draw_row(header)->
+	{tr, [], 
+	 [{th, [], "Date"}, 
+	  {th, [], "Open"},
+	  {th, [], "Close"},
+	  {th, [], "Min"},
+	  {th, [], "Max"}]};
+draw_row({{_, Scale, Timestamp}, 
+		  #stock_agg {
+			open_price = OP,
+			close_price = CP,
+			min_price = MinP,
+			max_price = MaxP
+		   }}) ->
+	{tr, [], [
+			  {td, [], format_ts(Scale, Timestamp)},
+			  {td, [], format_number(OP)},
+			  {td, [], format_number(CP)},
+			  {td, [], format_number(MinP)},
+			  {td, [], format_number(MaxP)}
+			 ]}.
+
+format_ts(Scale, TimeStamp) ->
+	DateTime = datetime_util:millis_to_datetime(TimeStamp),
+	case Scale of
+		year -> dh_date:format("Y", DateTime);
+		month -> dh_date:format("F Y", DateTime);
+		week -> dh_date:format("W Y", DateTime);
+		day -> dh_date:format("Y, F j");
+		_ -> dh_date:format("Y, F j, H:i", DateTime)
+	end.
+
+format_number(Number) ->
+	if is_float(Number) ->
+			io_lib:format("~.4f", [Number]);
+	   is_integer(Number) ->
+			Number
+	end.
 
 ehtml(Inner) ->
     {ehtml,
