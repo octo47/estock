@@ -20,7 +20,8 @@
 						millis_to_datetime/1,
 						truncate_datetime_millis/2]).
 %% API
--export([start_link/1, start_worker/2, find_or_create/1, find/1, add_row/2, list_aggs/4, init_table/0]).
+-export([start_link/1, start_worker/2, find_or_create/1, find/1, 
+		 add_row/2, add_row_async/2, list_aggs/4, init_table/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -54,6 +55,8 @@ init_table() ->
     end.
 
 add_row(Pid, Row) ->
+    gen_server:call(Pid, {add_row, Row}).
+add_row_async(Pid, Row) ->
     gen_server:cast(Pid, {add_row, Row}).
 
 list_aggs(Pid, Scale, Start, Limit) ->
@@ -65,15 +68,15 @@ find(Name) ->
 
 -spec find_or_create(Name :: string()) -> term().
 find_or_create(Name) ->
-    case find(Name) of
+	case find(Name) of
 		undefined ->
 			start_worker(Name, ?WORKER_TABLE),
 			case gproc:lookup_local_name(Name) of
 				undefined -> erlang:error(cant_create_worker, Name);
-				Addr -> Addr
+				Pid -> Pid
 			end;
-		Addr -> 
-			Addr
+		Pid -> 
+			Pid
     end.
 
 %%%===================================================================
@@ -87,6 +90,9 @@ init([Name, Tab]) ->
 
 handle_call({list_aggs, Scale, Start, Limit}, _From, State) ->
     {reply, list_aggs_i(Scale, Start, Limit, State), State};
+handle_call({add_row, Row}, _From, State) ->
+	add_row_i(Row, State),
+    {reply, ok, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
