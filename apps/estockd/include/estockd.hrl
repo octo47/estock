@@ -17,7 +17,7 @@
 		  length = 0 :: integer(),
 		  maxlength = 30 :: integer(),
 		  timetick = 1000 :: integer,
-		  updated = 0:: timestamp()}).
+		  updated = 0 :: timestamp()}).
 
 -record(stock_row, {
 		  timestamp :: timestamp(),
