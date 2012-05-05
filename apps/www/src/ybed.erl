@@ -8,10 +8,11 @@ start() ->
 run() ->
     Id = "embedded",
     Docroot = www_app:docroot(),
+    HttpPort = www_app:http_port(),
     GconfList = [{id, Id},
 				 {logdir, www_app:logdir()}
 				],    
-    SconfList = [{port, 7000},
+    SconfList = [{port, HttpPort},
                  {listen, {0,0,0,0}},
                  {docroot, Docroot},
                  {appmods, [{"/estock", www_estock}]}],

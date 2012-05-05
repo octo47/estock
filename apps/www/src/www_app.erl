@@ -5,10 +5,11 @@
 %% Application callbacks
 -export([start/2, start/0, stop/1]).
 -export([get_conf_param/2]).
--export([docroot/0, logdir/0]).
+-export([docroot/0, logdir/0, http_port/0]).
 
 -define(DOCROOT, "./docroot").
--define(LOGDIR, "./logs").
+-define(LOGDIR, "./log").
+-define(HTTP_PORT, 7000).
 
 %% ===================================================================
 %% Application callbacks
@@ -35,3 +36,6 @@ docroot() ->
 
 logdir() ->	
 	get_conf_param(logdir, ?LOGDIR).
+
+http_port() ->	
+	get_conf_param(http_port, ?HTTP_PORT).
