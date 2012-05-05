@@ -11,72 +11,157 @@
 
 -export([out/1]).
 
--record(post_data, {
+-record(view_data, {
 		  name = "ECHO",
 		  start = 0,
 		  scale = day,
 		  limit = 50}).
 
+-record(add_data, {
+		  name,
+		  timestamp = undefined,
+		  price,
+		  amount
+		 }).
+
+%% for easie testing allow post and gets
 out(A) ->
 	Req = A#arg.req,
-	if Req#http_request.method == 'GET' ->
+	Uri = yaws_api:request_url(A),
+	Path = string:tokens(Uri#url.path, "/"), 
+	QArgs = lists:keysort(1, yaws_api:parse_query(A)),
+	Args = 
+		case Req#http_request.method of
+			'POST' ->
+				PArgs = lists:keysort(1, yaws_api:parse_post(A)),
+				{ post, lists:keymerge(1, PArgs, QArgs) };
+			'GET' ->
+				{ get, QArgs }
+	end,
+	case Path of
+		["estock", "view"] -> handle_view(Args);
+		["estock", "add"] -> handle_add(Args);
+		_ -> handle_view(Args)
+	end.
+
+%% TODO: no validation yet, sorry.
+handle_add({_Method, Args}) ->
+	P = parse_add_data(Args, #add_data{}),
+	if length(Args) == 0 ->
+			ehtml([draw_add_form()]);
+	   true ->
+			R = #stock_row{
+			  timestamp = case P#add_data.timestamp of
+							  undefined -> 
+								  datetime_util:epoch_millis();
+							  T -> T
+						  end,
+			  name = P#add_data.name,
+			  price = P#add_data.price,
+			  amount = P#add_data.amount
+			 },
+			estockd:add_row(R),
+			ehtml([
+				   {p, [], "Added, thanks."}
+				  ])
+	end.
+
+handle_view({_Method, Args}) ->
+	P = parse_view_data(Args, #view_data{}),
+	if length(Args) == 0 ->
 			ehtml([
 				   draw_hello(),
-				   draw_form(#post_data{})
-				   ]);
-	   Req#http_request.method == 'POST' ->
-			L = yaws_api:parse_post(A),
-			P = parse_post_data(L, #post_data{}),
+				   draw_view_form(P)
+				  ]);
+	   true ->
 			ehtml([
 				   draw_hello(),
-				   draw_form(P),
+				   draw_view_form(P),
 				   draw_table(P)
 				  ])
 	end.
 
-parse_post_data(L, P) ->
-	[I|R] = L,
-	Np = case I of 
-			 {"name", V} -> P#post_data{ name = V };
-			 {"scale", V} -> P#post_data{ scale = V};
-			 {"start", V} ->
-				 {D, _} = string:to_integer(V), 
-				 P#post_data{ start = D };
-			 {"limit", V} -> 
-				 {D, _} = string:to_integer(V), 
-				 P#post_data{ limit = D };
-			 _ -> P
-		 end,
-	case R of
-		[] -> Np;
-		_ -> parse_post_data(R, Np)
+
+parse_view_data(L, P) ->
+	case L of
+		[] -> P;
+		[I|R] -> 
+			Np = case I of 
+					 {"name", V} -> P#view_data{ name = V };
+					 {"scale", V} -> P#view_data{ scale = V};
+					 {"start", V} ->
+						 {D, _} = string:to_integer(V), 
+						 P#view_data{ start = D };
+					 {"limit", V} -> 
+						 {D, _} = string:to_integer(V), 
+						 P#view_data{ limit = D };
+					 _ -> P
+				 end,
+			parse_view_data(R, Np)
 	end.
+
+parse_add_data(L, P) ->
+	case L of
+		[] -> P;
+		[I | R] ->
+			Np = case I of 
+					 {"name", V} -> P#add_data{ name = V };
+					 {"timestamp", ""} -> 
+						 P;
+					 {"timestamp", V} -> 
+						 {D, []} = string:to_integer(V),
+						 P#add_data{ timestamp = D };
+					 {"price", V} ->
+						 {D, []} = string:to_float(V), 
+						 P#add_data{ price = D };
+					 {"amount", V} -> 
+						 {D, []} = string:to_integer(V), 
+						 P#add_data{ amount = D };
+					 _ -> P
+				 end,
+			parse_add_data(R, Np)
+	end.
+
 
 draw_hello() ->
 	{p, [], "Welcome to EStock service."}.
 
-draw_form(PostData) ->
-	{form, [{action, "estock"},
+draw_view_form(PostData) ->
+	{form, [{action, "/estock/view"},
 			{method, "post"}],
 	 [{p, [], "Instrument"},
-	  {input, [{name, name}, {type, text}, {value, PostData#post_data.name}]},
+	  {input, [{name, name}, {type, text}, {value, PostData#view_data.name}]},
 	  {p, [], "Start Date"},
-	  {input, [{name, start}, {type, text}, {value, PostData#post_data.start}]},
+	  {input, [{name, start}, {type, text}, {value, PostData#view_data.start}]},
 	  {p, [], "Scale"},
-	  {input, [{name, scale}, {type, text}, {value, PostData#post_data.scale}]},
+	  {input, [{name, scale}, {type, text}, {value, PostData#view_data.scale}]},
 	  {p, [], "Limit"},
 	  {input, [{name, limit}, {type, text}, {value, "50"}]},
 	  {input, [{type, submit}]}]}.
 
+draw_add_form() ->
+	{form, [{action, "/estock/add"},
+			{method, "post"}],
+	 [{p, [], "Instrument"},
+	  {input, [{name, name}, {type, text}, {value, ""}]},
+	  {p, [], "Date"},
+	  {input, [{name, timestamp}, {type, text}, {value, ""}]},
+	  {p, [], "Price"},
+	  {input, [{name, price}, {type, text}, {value, ""}]},
+	  {p, [], "Amount"},
+	  {input, [{name, amount}, {type, text}, {value, ""}]},
+	  {input, [{type, submit}]}]}.
+
+
 draw_table(PostData) ->
 	Rows = [ draw_row(Agg)
 			  || Agg <- estockd:list_aggs(
-						  PostData#post_data.name,
+						  PostData#view_data.name,
 						  binary_to_existing_atom(
-							list_to_binary(PostData#post_data.scale),
+							list_to_binary(PostData#view_data.scale),
 							latin1),
-						  PostData#post_data.start,
-						  PostData#post_data.limit)],
+						  PostData#view_data.start,
+						  PostData#view_data.limit)],
 	case Rows of
 		[] -> {p, [], "No data found."};
 		_ -> {table, [{border, "1"}], 
