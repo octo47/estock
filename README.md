@@ -38,4 +38,6 @@ For each aggregate stored:
 
 In distributed mode each node has separate ets table and stores
 it own aggregates. When client queries aggregates server invokes
-in parallel requests to each node, where Name can be found.
+in parallel requests to each node, where Namecan be found.
+
+Siege results can be found here: https://github.com/octo47/estock/tree/master/priv/siege/results
