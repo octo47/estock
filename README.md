@@ -41,6 +41,7 @@ it own aggregates. When client queries aggregates server invokes
 in parallel requests to each node, where Namecan be found.
 
 Siege results can be found here: https://github.com/octo47/estock/tree/master/priv/siege/results
+They was made on my notebook, 4Gb RAM, SSD, Core i5 (4 cores).
 
 <table>
 <tr>
