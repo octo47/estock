@@ -44,13 +44,13 @@ Siege results can be found here: https://github.com/octo47/estock/tree/master/pr
 
 <table>
 <tr>
-	<td>test</td><td>smp</td><td>no-smp</td>
+	<th>test</th><th>smp</th><th>no-smp</th>
 </tr>
 <tr>
 	<td>add</td><td>4415.01</td><td>4238.99</td>
 </tr>
 <tr>
-	<td>add to 1 node only</td>4659.52<td></td><td>2253.78</td>
+	<td>add to 1 node only</td><td>4659.52</td><td>2253.78</td>
 </tr>
 <tr>
 	<td>query</td><td>2799.79</td><td>4415.01</td>
