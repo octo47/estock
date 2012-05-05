@@ -44,7 +44,7 @@ Siege results can be found here: https://github.com/octo47/estock/tree/master/pr
 
 <table>
 <tr>
-	<th>test</th><th>smp</th><th>no-smp</th>
+	<th>test</th><th>smp, rps</th><th>no-smp, rps</th>
 </tr>
 <tr>
 	<td>add</td><td>4415.01</td><td>4238.99</td>
