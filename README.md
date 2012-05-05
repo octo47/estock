@@ -41,3 +41,18 @@ it own aggregates. When client queries aggregates server invokes
 in parallel requests to each node, where Namecan be found.
 
 Siege results can be found here: https://github.com/octo47/estock/tree/master/priv/siege/results
+
+<table>
+<tr>
+	<td>test</td><td>smp</td><td>no-smp</td>
+</tr>
+<tr>
+	<td>add</td><td>4415.01</td><td>4238.99</td>
+</tr>
+<tr>
+	<td>add to 1 node only</td>4659.52<td></td><td>2253.78</td>
+</tr>
+<tr>
+	<td>query</td><td>2799.79</td><td>4415.01</td>
+</tr>
+</table>
