@@ -8,13 +8,3 @@ http://localhost:7001/estock/add POST name=ECHO7&price=701.0&amount=120
 http://localhost:7001/estock/add POST name=ECHO8&price=801.0&amount=120
 http://localhost:7001/estock/add POST name=ECHO9&price=901.0&amount=120
 http://localhost:7001/estock/add POST name=ECHO10&price=1001.0&amount=120
-http://localhost:7002/estock/add POST name=ECHO1&price=102.0&amount=120
-http://localhost:7002/estock/add POST name=ECHO2&price=202.0&amount=120
-http://localhost:7002/estock/add POST name=ECHO3&price=302.0&amount=120
-http://localhost:7002/estock/add POST name=ECHO4&price=402.0&amount=120
-http://localhost:7002/estock/add POST name=ECHO5&price=502.0&amount=120
-http://localhost:7002/estock/add POST name=ECHO6&price=602.0&amount=120
-http://localhost:7002/estock/add POST name=ECHO7&price=702.0&amount=120
-http://localhost:7002/estock/add POST name=ECHO8&price=802.0&amount=120
-http://localhost:7002/estock/add POST name=ECHO9&price=902.0&amount=120
-http://localhost:7002/estock/add POST name=ECHO10&price=1002.0&amount=120
