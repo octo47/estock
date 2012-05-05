@@ -1,1 +1,5 @@
+-ifdef(debug).
 -define(DBG(F, A), io:format("(~w:~b) " ++ F ++ "~n", [?MODULE, ?LINE | A])).
+-else.
+-define(DBG(F, A), ok ).
+-endif.
