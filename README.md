@@ -54,6 +54,6 @@ They was made on my notebook, 4Gb RAM, SSD, Core i5 (4 cores).
 	<td>add to 1 node only</td><td>4659.52</td><td>2253.78</td>
 </tr>
 <tr>
-	<td>query</td><td>2799.79</td><td>4415.01</td>
+	<td>query</td><td>2799.79</td><td>2204.23</td>
 </tr>
 </table>
