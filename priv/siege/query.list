@@ -1,0 +1,2 @@
+http://localhost:7000/estock/view POST name=ECHO&start=0&scale=minute&limit=50
+http://localhost:7000/estock/view POST name=ECHO&start=0&scale=minute&limit=50
