@@ -15,7 +15,8 @@ add_row(#stock_row{name=Name} = Row) ->
 -spec list_aggs(string(), atom(), timestamp(), integer()) -> 
 		      [ {timestamp(), #stock_agg{}} ].
 list_aggs(Name, Scale, Start, Limit) ->
-    case estockd_worker:find(Name) of
-		undefined -> [];
-		Pid -> estockd_worker:list_aggs(Pid, Scale, Start, Limit)
-    end.
+	estockd_worker:merge_aggs(
+	  estockd_server:exec_parallel(Name, 
+								   estockd_worker,
+								   list_aggs,
+								   [Name, Scale, Start, Limit])).

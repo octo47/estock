@@ -21,7 +21,8 @@
 						truncate_datetime_millis/2]).
 %% API
 -export([start_link/1, start_worker/2, find_or_create/1, find/1, 
-		 add_row/2, add_row_async/2, list_aggs/4, init_table/0]).
+		 add_row/2, add_row_async/2, list_aggs/4, init_table/0,
+		 merge_aggs/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -59,8 +60,29 @@ add_row(Pid, Row) ->
 add_row_async(Pid, Row) ->
     gen_server:cast(Pid, {add_row, Row}).
 
-list_aggs(Pid, Scale, Start, Limit) ->
-    gen_server:call(Pid, {list_aggs, Scale, Start, Limit}).
+-spec list_aggs(string(), atom(), timestamp(), integer())->
+					   [ {{string(), atom(), timestamp()}, #stock_agg {} } ].
+list_aggs(Name, Scale, Start, Limit) ->
+	case find(Name) of
+		undefined -> [];
+		Pid -> gen_server:call(Pid, {list_aggs, Scale, Start, Limit})
+	end.
+
+%%% Lists should be sorted.
+-spec merge_aggs([[ {{string(), atom(), timestamp()}, #stock_agg {} } ]])->
+						[ {{string(), atom(), timestamp()}, #stock_agg {} } ].
+merge_aggs(AggsLists) ->
+	MergeF = fun(_Key, Agg1, Agg2) -> 
+					   merge_agg(Agg1, Agg2) end,
+	FoldF = fun(Aggs, Dict) -> 
+					  dict:merge(MergeF, Dict, Aggs) end,
+	ListToDictF = fun(Aggs) -> dict:from_list(Aggs) end,
+	ResultDict = lists:foldl(
+				   FoldF,
+				   dict:new(),
+				   lists:map(ListToDictF, AggsLists)
+				  ),
+	lists:keysort(1, dict:to_list(ResultDict)).
 
 -spec find(Name :: string()) -> term().
 find(Name) ->
@@ -85,7 +107,7 @@ find_or_create(Name) ->
 
 init([Name, Tab]) ->
     true = gproc:add_local_name(Name),
-    ?DBG("Worker for ~p~n", [Name]),
+	estockd_server:register_worker(Name),
     {ok, #state{name = Name, table = Tab}}.
 
 handle_call({list_aggs, Scale, Start, Limit}, _From, State) ->
@@ -176,6 +198,23 @@ make_agg(Row) ->
 		  amount = Row#stock_row.amount
 		 }.
 
+merge_agg(Agg1, Agg2) ->
+    {NOP, NOPT} = ?OPEN_PRICE(Agg1#stock_agg.open_price, Agg1#stock_agg.open_price_ts,
+							  Agg2#stock_agg.open_price, Agg2#stock_agg.open_price_ts),
+    {NCP, NCPT} = ?CLOSE_PRICE(Agg1#stock_agg.close_price, Agg1#stock_agg.close_price_ts,
+							  Agg2#stock_agg.close_price, Agg2#stock_agg.close_price_ts),
+    MinPrice = ?MIN(Agg1#stock_agg.min_price, Agg2#stock_agg.min_price),
+    MaxPrice = ?MAX(Agg1#stock_agg.max_price, Agg2#stock_agg.max_price),
+    #stock_agg {
+				 open_price = NOP,
+				 open_price_ts = NOPT,
+				 close_price = NCP,
+				 close_price_ts = NCPT,
+				 min_price = MinPrice,
+				 max_price = MaxPrice,
+				 amount = Agg1#stock_agg.amount + Agg2#stock_agg.amount }.
+	
+
 update_agg(Agg, Row) ->
     {NOP, NOPT} = ?OPEN_PRICE(Row#stock_row.price, Row#stock_row.timestamp,
 							  Agg#stock_agg.open_price, Agg#stock_agg.open_price_ts),
@@ -246,9 +285,9 @@ make_agg_test() ->
 					   price = 25,
 					   amount = 1230 },
     Agg = make_agg(Row),
-    ?assert(Agg#stock_agg.amount =:= 1230),
-    ?assert(Agg#stock_agg.min_price =:= 25),
-    ?assert(Agg#stock_agg.max_price =:= 25),
+    ?assertEqual(Agg#stock_agg.amount, 1230),
+    ?assertEqual(Agg#stock_agg.min_price, 25),
+    ?assertEqual(Agg#stock_agg.max_price, 25),
 
     Row2 = #stock_row { timestamp = datetime_to_millis({{2011,2,15},{22,15,01}}),
 						name = "MSFT",
@@ -256,9 +295,13 @@ make_agg_test() ->
 						amount = 123 },
     Agg2 = update_agg(Agg, Row2),
     io:format("~p~n~p~n", [Agg, Agg2]),
-    ?assert(Agg2#stock_agg.amount =:= 1353),
-    ?assert(Agg2#stock_agg.min_price =:= 25),
-    ?assert(Agg2#stock_agg.max_price =:= 26),
+    ?assertEqual(Agg2#stock_agg.amount, 1353),
+    ?assertEqual(Agg2#stock_agg.min_price, 25),
+    ?assertEqual(Agg2#stock_agg.max_price, 26),
+
+	Agg3 = merge_agg(Agg, Agg2),
+    ?assertEqual(Agg3#stock_agg.amount, 2583),
+
     ok.
 
 compare_agg_test() ->
