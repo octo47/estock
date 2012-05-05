@@ -68,7 +68,10 @@ list_aggs(Name, Scale, Start, Limit) ->
 		Pid -> gen_server:call(Pid, {list_aggs, Scale, Start, Limit})
 	end.
 
-%%% Lists should be sorted.
+%%% Aggregrate several results of list_aggs.
+%%% Usefull in case of multi node requests.
+%%% Merge will be done by each key, and then
+%%% result will be sorted again.
 -spec merge_aggs([[ {{string(), atom(), timestamp()}, #stock_agg {} } ]])->
 						[ {{string(), atom(), timestamp()}, #stock_agg {} } ].
 merge_aggs(AggsLists) ->
@@ -84,10 +87,12 @@ merge_aggs(AggsLists) ->
 				  ),
 	lists:keysort(1, dict:to_list(ResultDict)).
 
+%%% Lookup local process, which handles instrument Name.
 -spec find(Name :: string()) -> term().
 find(Name) ->
     gproc:lookup_local_name(Name).
 
+%%% Lookup or atomically create new process for given Name.
 -spec find_or_create(Name :: string()) -> term().
 find_or_create(Name) ->
 	case find(Name) of

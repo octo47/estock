@@ -1,7 +1,10 @@
 %%% @author Andrey Stepachev <octo47@gmail.com>
 %%% @copyright (C) 2012, Andrey Stepachev
 %%% @doc
-%%% API Server
+%%% Named parallel queries. 
+%%% Handles registry of all Pids mapped to Names.
+%%% Can invoke requests on each node, where particular
+%%% Pid with given Name resides.
 %%% @end
 %%% Created : 27 Apr 2012 by Andrey Stepachev <octo@octo-laptop>
 
@@ -66,6 +69,7 @@ unregister_worker(WorkerPid) ->
 		undefined -> false
 	end.
 
+%%% Execute in parallel function with args.
 exec_parallel(Name, Module, Fun, Args) ->
 	Pids = find_workers(Name),
 	?DBG("Exec ~p:~p(~p) for name ~p: pids=~p~n", 
